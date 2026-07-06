@@ -1,0 +1,311 @@
+/* =========================================================
+   MAVA TALLER — SISTEMA DE DISEÑO
+   Inspirado en fichas técnicas y planos de taller:
+   navy + acero + señales semáforo (verde/ámbar/rojo),
+   tipografía condensada tipo "chapa patente" para títulos,
+   monoespaciada para datos técnicos (KM, patente, folio).
+========================================================= */
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap');
+
+:root[data-theme="claro"] {
+  --bg-body: #eef1f5; --bg-card: #ffffff;
+  --navy: #0b1b2b; --navy-2: #142b42; --steel: #1e3a5f;
+  --primary: #1e3a5f; --primary-hover: #142b42;
+  --amber: #f5a623; --amber-dark: #b9790f;
+  --bien: #16a34a; --bien-bg: #e8f8ef;
+  --regular: #eab308; --regular-bg: #fef7e0;
+  --mal: #dc2626; --mal-bg: #fdeaea;
+  --na: #94a3b8; --na-bg: #f1f4f7;
+  --success: #16a34a; --success-hover: #128a3e;
+  --text-main: #0b1b2b; --text-muted: #5b6b7c;
+  --border-color: #d7dee6; --input-bg: #ffffff;
+  --input-text: #0b1b2b;
+  --font-display: 'Oswald', 'Segoe UI', sans-serif;
+  --font-body: 'Inter', 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+  --shadow: 0 4px 6px -1px rgba(11,27,43,0.10), 0 2px 4px -1px rgba(11,27,43,0.06);
+  --shadow-lg: 0 20px 45px -15px rgba(11,27,43,0.35);
+}
+
+:root[data-theme="oscuro"] {
+  --bg-body: #070d15; --bg-card: #101f30;
+  --navy: #0b1b2b; --navy-2: #142b42; --steel: #3b6ea5;
+  --primary: #3b82c8; --primary-hover: #63a3e6;
+  --amber: #f5a623; --amber-dark: #ffbf4d;
+  --bien: #34d399; --bien-bg: #0e2a20;
+  --regular: #fbbf24; --regular-bg: #2b2308;
+  --mal: #f87171; --mal-bg: #2c1414;
+  --na: #64748b; --na-bg: #1b2836;
+  --success: #22c55e; --success-hover: #4ade80;
+  --text-main: #eef3f9; --text-muted: #90a2b8;
+  --border-color: #24384d; --input-bg: #0b1622;
+  --input-text: #ffffff;
+  --font-display: 'Oswald', 'Segoe UI', sans-serif;
+  --font-body: 'Inter', 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+  --shadow: 0 4px 6px -1px rgba(0,0,0,0.4), 0 2px 4px -1px rgba(0,0,0,0.3);
+  --shadow-lg: 0 20px 45px -15px rgba(0,0,0,0.6);
+}
+
+/* =========================================================
+   BASE
+========================================================= */
+* { box-sizing: border-box; }
+body {
+  margin: 0; font-family: var(--font-body);
+  background-color: var(--bg-body); color: var(--text-main);
+  transition: background-color 0.3s ease, color 0.3s ease; -webkit-font-smoothing: antialiased;
+}
+.app-container { max-width: 900px; margin: 0 auto; padding: 14px; }
+
+.navbar {
+  display: flex; flex-direction: column; align-items: center; background: var(--navy);
+  padding: 18px 20px; border-radius: 14px; box-shadow: var(--shadow-lg); margin-bottom: 20px;
+  border-bottom: 3px solid var(--amber); transition: all 0.3s ease;
+}
+.navbar h2 {
+  margin: 0 0 14px 0; font-family: var(--font-display); font-size: 24px; letter-spacing: 2px;
+  color: #ffffff; font-weight: 700; text-transform: uppercase;
+}
+.navbar h2 span { color: var(--amber); }
+.nav-links { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+
+button {
+  background-color: rgba(255,255,255,0.06); color: #fff; border: 1px solid rgba(255,255,255,0.18);
+  padding: 11px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px;
+  transition: all 0.18s ease; font-family: var(--font-body);
+}
+.pantalla button { color: var(--text-main); background: var(--bg-card); border: 1px solid var(--border-color); }
+button:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.08); }
+button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+input, select, textarea {
+  width: 100%; padding: 13px 14px; margin-bottom: 14px; border-radius: 8px;
+  background-color: var(--input-bg) !important; border: 1px solid var(--border-color) !important;
+  color: var(--input-text) !important; box-sizing: border-box; font-size: 16px; transition: all 0.2s ease; font-family: var(--font-body);
+}
+textarea { min-height: 80px; resize: vertical; font-family: var(--font-mono); font-size: 14px; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary) !important; box-shadow: 0 0 0 3px rgba(59,130,246,0.18); }
+
+.pantalla {
+  background-color: var(--bg-card); padding: 26px; border-radius: 14px; box-shadow: var(--shadow);
+  border: 1px solid var(--border-color); animation: fadeIn 0.35s ease-out;
+}
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.pantalla h1 {
+  text-align: center; color: var(--text-main); margin-top: 0; margin-bottom: 22px;
+  font-family: var(--font-display); text-transform: uppercase; letter-spacing: 1px; font-size: 24px;
+}
+.grid-2 { display: grid; grid-template-columns: 1fr; gap: 20px; }
+@media (min-width: 768px) { .grid-2 { grid-template-columns: 1fr 1fr; } .navbar { flex-direction: row; justify-content: space-between; padding: 16px 26px; } .navbar h2 { margin: 0; } }
+
+.seccion-titulo {
+  border-bottom: 2px solid var(--border-color); padding-bottom: 8px; color: var(--steel);
+  margin-top: 25px; margin-bottom: 15px; font-family: var(--font-display); text-transform: uppercase;
+  letter-spacing: 0.5px; font-size: 15px; display: flex; align-items: center; gap: 8px;
+}
+
+.fila-check {
+  background-color: transparent !important; padding: 12px; border-radius: 8px; margin-bottom: 10px;
+  border-left: 4px solid var(--primary) !important; border: 1px solid var(--border-color) !important; transition: transform 0.15s ease;
+}
+.fila-check:hover { transform: translateX(3px); background-color: var(--bg-body) !important; }
+.fila-check label { font-family: var(--font-body); font-size: 13px; }
+
+/* Chip de estado reutilizable (BIEN / REGULAR / MAL / N-A) */
+.chip-estado {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 20px;
+  font-family: var(--font-mono); font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+}
+.chip-bien { background: var(--bien-bg); color: var(--bien); }
+.chip-regular { background: var(--regular-bg); color: var(--regular-dark, var(--regular)); }
+.chip-mal { background: var(--mal-bg); color: var(--mal); }
+.chip-na { background: var(--na-bg); color: var(--na); }
+.chip-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+
+/* =========================================================
+   DIAGRAMA DE SUSPENSIÓN — elemento distintivo (plano técnico)
+   Se usa tanto en la carga móvil (tocar para cambiar estado)
+   como en el certificado final.
+========================================================= */
+.diagrama-wrap {
+  background: var(--navy); border-radius: 16px; padding: 20px 12px 26px;
+  position: relative; overflow: hidden; box-shadow: var(--shadow-lg);
+  background-image:
+    linear-gradient(rgba(255,255,255,0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.045) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+.diagrama-titulo {
+  color: #fff; font-family: var(--font-display); text-transform: uppercase; letter-spacing: 1.5px;
+  font-size: 13px; text-align: center; margin: 0 0 4px 0; opacity: 0.85;
+}
+.diagrama-subtitulo {
+  color: var(--amber); font-family: var(--font-mono); font-size: 10.5px; text-align: center;
+  margin: 0 0 14px 0; letter-spacing: 0.5px;
+}
+.diagrama-punto { cursor: pointer; }
+.diagrama-punto:active circle.punto-nucleo { r: 15; }
+.diagrama-punto text { pointer-events: none; user-select: none; }
+.diagrama-leyenda {
+  display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; margin-top: 14px;
+}
+.diagrama-leyenda span {
+  display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono);
+  font-size: 10px; color: #cfe0f4; text-transform: uppercase; letter-spacing: 0.5px;
+}
+.diagrama-leyenda .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.diagrama-hint {
+  text-align: center; color: #7f93ab; font-size: 11px; margin-top: 10px; font-family: var(--font-body);
+}
+.diagrama-resumen {
+  display: flex; justify-content: center; gap: 10px; margin-top: 16px; flex-wrap: wrap;
+}
+.resumen-pill {
+  font-family: var(--font-mono); font-size: 11px; font-weight: 700; padding: 6px 12px;
+  border-radius: 20px; letter-spacing: 0.5px;
+}
+
+/* =========================================================
+   TARJETA VEHÍCULO ACTIVO
+========================================================= */
+.resumen-activo {
+  background: linear-gradient(120deg, var(--navy) 0%, var(--steel) 100%); color: #fff;
+  margin-bottom: 20px; padding: 18px 20px; border-radius: 14px; text-align: center;
+  box-shadow: var(--shadow-lg); border-bottom: 3px solid var(--amber);
+}
+.resumen-activo strong { font-size: 18px; font-family: var(--font-display); letter-spacing: 0.5px; }
+.resumen-activo .placa {
+  display: inline-block; font-family: var(--font-mono); background: #fff; color: var(--navy);
+  padding: 2px 10px; border-radius: 4px; margin-left: 8px; font-weight: 700; letter-spacing: 1px;
+}
+
+/* =========================================================
+   GRÁFICOS DE PANTALLA (no PDF) — presión de neumáticos en carga
+========================================================= */
+.grafico-ruedas-container { background: var(--bg-body); border: 2px dashed var(--border-color); border-radius: 12px; padding: 20px; margin: 20px 0; display: flex; justify-content: center; align-items: center; }
+.grafico-auto { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 60px; position: relative; }
+.grafico-moto { display: flex; gap: 60px; position: relative; justify-content: center; }
+.rueda { background: var(--navy); color: white; padding: 15px; border-radius: 8px; text-align: center; border: 3px solid var(--steel); z-index: 2; min-width: 80px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+.rueda small { display: block; font-size: 11px; color: #94a3b8; text-transform: uppercase; margin-bottom: 5px; font-family: var(--font-mono); }
+.rueda strong { display: block; font-size: 18px; color: var(--bien); font-family: var(--font-mono); }
+
+/* =========================================================
+   PANEL / ESTADÍSTICAS
+========================================================= */
+.stat-card {
+  padding: 28px; border-radius: 16px; text-align: center; box-shadow: var(--shadow-lg); color: #fff;
+  position: relative; overflow: hidden;
+}
+.stat-card h3 { margin: 0 0 8px 0; font-size: 13px; opacity: 0.85; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 1px; }
+.stat-card p { margin: 0; font-size: 48px; font-weight: 800; font-family: var(--font-display); }
+
+/* =========================================================
+   DISEÑO EXCLUSIVO PARA IMPRESIÓN — CERTIFICADO PREMIUM
+========================================================= */
+/* Reglas que solo aplican al imprimir en papel de verdad (ocultar botones, fondo blanco) */
+@media print {
+  @page { size: A4; margin: 8mm 10mm; }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  .dont-print { display: none !important; }
+  body, .app-container, .pantalla { background: white !important; color: black !important; padding: 0 !important; margin: 0 !important; box-shadow: none !important; border: none !important; font-size: 12px; }
+}
+
+/* El diseño del certificado queda SIEMPRE activo (no solo al imprimir), así
+   la vista previa en pantalla es igual al PDF que se genera y comparte. */
+.pdf-container { font-family: var(--font-body); padding: 0 !important; border: none !important; width: 100%; background: white; color: #0f172a; }
+
+  /* ---- Cabecera tipo "ficha técnica" ---- */
+  .pdf-header-modern {
+    background: linear-gradient(135deg, #0b1b2b 0%, #1e3a5f 100%) !important;
+    color: white !important; padding: 12px 16px; border-radius: 10px 10px 0 0;
+    display: flex; justify-content: space-between; align-items: center;
+    border-bottom: 3px solid #f5a623; position: relative;
+  }
+  .pdf-header-modern-izq h1 {
+    margin: 0 0 1px 0; font-family: var(--font-display); font-size: 20px; color: white !important;
+    letter-spacing: 1.5px; font-weight: 700; text-transform: uppercase;
+  }
+  .pdf-header-modern-izq h3 { margin: 0 0 3px 0; font-size: 8px; color: #9fc2eb !important; letter-spacing: 1px; font-weight: 600; text-transform: uppercase; }
+  .pdf-header-modern-izq p { margin: 0; font-size: 8.5px; color: #dbe7f5 !important; font-family: var(--font-mono); }
+  .pdf-badge-premium {
+    background: #f5a623 !important; color: #0b1b2b !important; font-family: var(--font-display);
+    padding: 5px 12px; border-radius: 30px; font-weight: 700; font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;
+  }
+  .pdf-folio { font-family: var(--font-mono); font-size: 8px; color: #9fc2eb !important; text-align: right; margin-top: 3px; }
+
+  .pdf-body { padding: 10px 4px 0; border: 1px solid #dbe3ec; border-top: none; border-radius: 0 0 10px 10px; }
+
+  /* ---- Ficha técnica (grid de datos, estilo "chapa") ---- */
+  .pdf-grid-datos {
+    display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 6px 14px;
+    background: #f5f7fa !important; padding: 10px 14px; border-radius: 8px;
+    border: 1px solid #dbe3ec !important; margin-bottom: 10px;
+  }
+  .pdf-item-dato { display: flex; flex-direction: column; gap: 1px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 3px; }
+  .pdf-item-dato label { font-size: 7.5px; color: #64748b !important; text-transform: uppercase; font-weight: 700; letter-spacing: 0.4px; }
+  .pdf-item-dato span { font-size: 11px; color: #0b1b2b !important; font-weight: 700; font-family: var(--font-mono); }
+
+  /* ---- Título de sección ---- */
+  .pdf-section-title {
+    background: #eef2f7 !important; color: #0b1b2b !important;
+    padding: 5px 10px; border-left: 4px solid #1e3a5f !important;
+    margin: 8px 0 5px 0; font-size: 10.5px; border-radius: 0 6px 6px 0;
+    display: flex; align-items: center; gap: 6px; font-weight: 700; text-transform: uppercase;
+    font-family: var(--font-display); letter-spacing: 0.3px; break-after: avoid;
+  }
+
+  /* ---- Resumen semáforo (cantidad de OK / atención / urgente) ---- */
+  .pdf-resumen-semaforo { display: flex; gap: 6px; margin-bottom: 4px; }
+  .pdf-resumen-item {
+    flex: 1; text-align: center; padding: 5px 6px; border-radius: 6px; font-family: var(--font-mono);
+  }
+  .pdf-resumen-item .num { font-size: 16px; font-weight: 800; display: block; line-height: 1; }
+  .pdf-resumen-item .lbl { font-size: 6.5px; text-transform: uppercase; letter-spacing: 0.3px; opacity: 0.85; }
+
+  /* ---- Dos columnas para las secciones del checklist: reduce muchísimo el largo del PDF ---- */
+  .pdf-secciones-grid { display: block; }
+  .pdf-seccion-item { break-inside: avoid; page-break-inside: avoid; margin-bottom: 4px; display: block; }
+
+  /* ---- Tablas ---- */
+  .pdf-tabla-moderna { width: 100%; border-collapse: separate; border-spacing: 0; margin-bottom: 6px; border: 1px solid #dbe3ec; border-radius: 6px; overflow: hidden; font-size: 9.5px; }
+  .pdf-tabla-moderna th { background: #f5f7fa !important; color: #64748b !important; padding: 3px 8px; text-align: left; font-size: 7.5px; text-transform: uppercase; border-bottom: 1px solid #dbe3ec; letter-spacing: 0.3px; font-family: var(--font-display); }
+  .pdf-tabla-moderna td { padding: 3px 8px; border-bottom: 1px solid #eef2f7; font-size: 9.5px; color: #1e293b !important; vertical-align: middle; line-height: 1.25; }
+  .pdf-tabla-moderna tr:last-child td { border-bottom: none; }
+  .pdf-tabla-moderna td.col-estado { text-align: right; }
+
+  .pdf-container .chip-estado { border: 1px solid rgba(0,0,0,0.06); padding: 1px 6px !important; font-size: 8px !important; }
+
+  /* ---- Diagrama en el certificado (versión clara imprimible, más chico) ---- */
+  .diagrama-wrap.pdf-diagrama {
+    background: #101f30 !important; box-shadow: none !important; padding: 8px 6px 10px;
+    break-inside: avoid;
+  }
+  .pdf-diagrama .diagrama-titulo { font-size: 9px; margin-bottom: 2px; }
+  .pdf-diagrama .diagrama-subtitulo { font-size: 7px; margin-bottom: 6px; }
+  .pdf-diagrama svg { max-width: 210px !important; }
+  .pdf-diagrama .diagrama-leyenda { margin-top: 6px; gap: 8px; }
+  .pdf-diagrama .diagrama-leyenda span { font-size: 7px; }
+
+  /* ---- Certificado de producto ---- */
+  .pdf-productos-box {
+    padding: 6px 10px; border: 1px solid #dbe3ec; border-radius: 6px; font-size: 9.5px;
+    white-space: pre-wrap; background: #fbfbfd !important; font-family: var(--font-mono); line-height: 1.35;
+  }
+
+  /* ---- Fotos: más chicas para no ocupar una hoja entera ---- */
+  .pdf-fotos-grid { display: grid; grid-template-columns: repeat(6, 1fr) !important; gap: 4px !important; margin-bottom: 6px !important; }
+  .pdf-fotos-grid img { height: 55px !important; }
+
+  /* ---- Leyenda ---- */
+  .pdf-leyenda {
+    display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0; padding: 5px 10px;
+    background: #f5f7fa !important; border-radius: 6px; font-size: 8px;
+  }
+  .pdf-leyenda .item { display: flex; align-items: center; gap: 4px; }
+  .pdf-leyenda .dot { width: 6px; height: 6px; border-radius: 50%; }
+
+  /* ---- Condiciones / footer ---- */
+  .pdf-condiciones { font-size: 7px; color: #64748b !important; text-align: justify; margin-top: 8px; border-top: 1px solid #dbe3ec; padding-top: 5px; line-height: 1.3; }
+  .pdf-footer { text-align: center; font-size: 8px; margin-top: 6px; color: #94a3b8 !important; font-weight: 700; font-family: var(--font-mono); letter-spacing: 0.3px; }
