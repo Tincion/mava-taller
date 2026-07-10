@@ -295,8 +295,8 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--p
   }
 
   /* ---- Fotos: más chicas para no ocupar una hoja entera ---- */
-  .pdf-fotos-grid { display: grid; grid-template-columns: repeat(6, 1fr) !important; gap: 4px !important; margin-bottom: 6px !important; }
-  .pdf-fotos-grid img { height: 55px !important; }
+  .pdf-fotos-grid { display: grid; grid-template-columns: repeat(3, 1fr) !important; gap: 8px !important; margin-bottom: 10px !important; }
+  .pdf-fotos-grid img { height: 130px !important; }
 
   /* ---- Leyenda ---- */
   .pdf-leyenda {
