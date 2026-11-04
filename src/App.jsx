@@ -487,77 +487,91 @@ function FilaTrabajoAdicional({ trabajo, onCambiar, onQuitar }) {
 function ConsultaPublica() {
   const [patente, setPatente] = useState('');
   const [dni, setDni] = useState('');
-  const [buscando, setBuscando] = useState(false);
+  const [estado, setEstado] = useState('inicio'); // inicio | cargando | ok | error
   const [mensaje, setMensaje] = useState('');
-  const [resultado, setResultado] = useState(null);
+  const [res, setRes] = useState(null);
+
+  const calcular = (r) => {
+    const km = parseFloat(r.km_actual) || 0;
+    const kmProx = parseFloat(r.km_proximo) || 0;
+    const prom = parseFloat(r.promedio_km_mensual) || 0;
+    const faltanKm = kmProx - km;
+    let fecha = null;
+    let dias = null;
+    if (prom > 0 && faltanKm > 0) {
+      fecha = new Date(r.fecha_ultimo_service);
+      fecha.setDate(fecha.getDate() + Math.round((faltanKm / prom) * 30));
+      dias = Math.ceil((fecha - new Date()) / 86400000);
+    }
+    return { ...r, faltanKm, fecha, dias };
+  };
 
   const consultar = async (e) => {
     e.preventDefault();
-    setBuscando(true); setMensaje(''); setResultado(null);
+    setEstado('cargando'); setMensaje(''); setRes(null);
     const { data, error } = await supabase.rpc('consulta_proximo_service', {
-      p_patente: patente, p_dni: dni,
+      p_patente: patente.trim(),
+      p_dni: dni.replace(/\D/g, ''),
     });
-    setBuscando(false);
     if (error) {
-      const msg = error.message || '';
-      if (msg.includes('BLOQUEADO')) return setMensaje('Por seguridad, los datos de este vehículo quedaron bloqueados. Comunicate con el taller para desbloquearlos.');
-      if (msg.includes('DNI_INCORRECTO')) return setMensaje('No encontramos un vehículo con esa patente y DNI. Revisá los datos.');
-      return setMensaje('No pudimos consultar en este momento. Probá de nuevo más tarde.');
+      const m = error.message || '';
+      setEstado('error');
+      if (m.includes('BLOQUEADO')) setMensaje('Por seguridad, los datos de este vehículo quedaron bloqueados. Comunicate con el taller.');
+      else if (m.includes('DNI_INCORRECTO')) setMensaje('Patente o DNI incorrectos.');
+      else setMensaje('No pudimos consultar. Probá de nuevo en un momento.');
+      return;
     }
-    if (!data || data.length === 0) return setMensaje('No encontramos un vehículo con esa patente y DNI. Revisá los datos.');
-
-    const r = data[0];
-    const kmActual = parseFloat(r.km_actual) || 0;
-    const kmProximo = parseFloat(r.km_proximo) || 0;
-    const promedio = parseFloat(r.promedio_km_mensual) || 0;
-    let diasRestantes = null;
-    let fechaEstimada = null;
-    if (promedio > 0 && kmProximo > kmActual) {
-      const meses = (kmProximo - kmActual) / promedio;
-      fechaEstimada = new Date(r.fecha_ultimo_service);
-      fechaEstimada.setDate(fechaEstimada.getDate() + Math.round(meses * 30));
-      diasRestantes = Math.ceil((fechaEstimada - new Date()) / (1000 * 60 * 60 * 24));
+    if (!data || data.length === 0) {
+      setEstado('error');
+      setMensaje('Todavía no hay services cargados para este vehículo. Comunicate con el taller.');
+      return;
     }
-    setResultado({ ...r, kmActual, kmProximo, diasRestantes, fechaEstimada });
+    setRes(calcular(data[0]));
+    setEstado('ok');
   };
 
-  const caja = { background: 'var(--bg-body)', padding: 20, borderRadius: 12, border: '1px solid var(--border-color)', maxWidth: 420, margin: '40px auto' };
+  const nuevaConsulta = () => { setEstado('inicio'); setRes(null); setMensaje(''); setPatente(''); setDni(''); };
 
   return (
-    <div style={{ padding: 16 }}>
-      <div style={caja}>
-        <h2 style={{ marginTop: 0 }}>MAVA Taller · Próximo service</h2>
-        <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>Ingresá la patente y el DNI del titular para ver cuándo te toca tu próximo cambio de aceite.</p>
+    <div style={{ maxWidth: 420, margin: '30px auto', padding: 16, fontFamily: 'sans-serif' }}>
+      <h2 style={{ marginBottom: 4 }}>MAVA Taller</h2>
+      <p style={{ marginTop: 0, color: '#666' }}>Próximo service</p>
+
+      {estado !== 'ok' && (
         <form onSubmit={consultar}>
-          <label style={{ display: 'block', fontWeight: 'bold', marginBottom: 4 }}>Patente</label>
-          <input value={patente} onChange={(e) => setPatente(e.target.value)} required style={{ width: '100%', marginBottom: 12 }} />
-          <label style={{ display: 'block', fontWeight: 'bold', marginBottom: 4 }}>DNI del titular</label>
-          <input value={dni} onChange={(e) => setDni(e.target.value)} required inputMode="numeric" style={{ width: '100%', marginBottom: 14 }} />
-          <button type="submit" disabled={buscando} style={{ width: '100%', background: 'var(--primary)', color: '#fff' }}>
-            {buscando ? 'Consultando…' : 'Consultar'}
+          <label style={{ display: 'block', marginBottom: 4 }}>Patente</label>
+          <input value={patente} onChange={(e) => setPatente(e.target.value)} required style={{ width: '100%', padding: 8, marginBottom: 10 }} />
+          <label style={{ display: 'block', marginBottom: 4 }}>DNI del titular</label>
+          <input value={dni} onChange={(e) => setDni(e.target.value)} required inputMode="numeric" style={{ width: '100%', padding: 8, marginBottom: 12 }} />
+          <button type="submit" disabled={estado === 'cargando'} style={{ width: '100%', padding: 10 }}>
+            {estado === 'cargando' ? 'Consultando…' : 'Consultar'}
           </button>
         </form>
+      )}
 
-        {mensaje && <p style={{ color: 'var(--mal)', marginTop: 14 }}>{mensaje}</p>}
+      {estado === 'error' && <p style={{ color: '#b00020', marginTop: 14 }}>{mensaje}</p>}
 
-        {resultado && (
-          <div style={{ marginTop: 18, paddingTop: 14, borderTop: '1px solid var(--border-color)' }}>
-            <p style={{ margin: '0 0 6px 0' }}><strong>{resultado.marca} {resultado.modelo}</strong> ({resultado.patente})</p>
-            <p style={{ margin: '0 0 6px 0' }}>Kilometraje registrado: {resultado.kmActual} km</p>
-            <p style={{ margin: '0 0 10px 0' }}>Próximo service recomendado: {resultado.kmProximo} km</p>
-            {resultado.diasRestantes === null ? (
-              <p style={{ fontWeight: 'bold' }}>Consultá con el taller la fecha de tu próximo service.</p>
-            ) : resultado.diasRestantes <= 0 ? (
-              <p style={{ fontWeight: 'bold', color: 'var(--mal)' }}>Tu service está vencido hace {Math.abs(resultado.diasRestantes)} días. Coordiná un turno con el taller.</p>
-            ) : (
-              <p style={{ fontWeight: 'bold', color: 'var(--regular)' }}>
-                Te toca aprox. el {resultado.fechaEstimada.toLocaleDateString()} (en {resultado.diasRestantes} días).
-              </p>
-            )}
-            <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>La fecha es una estimación según tu uso promedio.</p>
-          </div>
-        )}
-      </div>
+      {estado === 'ok' && res && (
+        <div style={{ borderTop: '1px solid #ccc', paddingTop: 12 }}>
+          <p><strong>{res.marca} {res.modelo}</strong> ({res.patente})</p>
+          <p>Kilometraje actual: <strong>{res.km_actual || '-'} km</strong></p>
+          <p>Próximo service: <strong>a los {res.km_proximo || '-'} km</strong></p>
+          {res.fecha && res.dias > 0 && (
+            <p><strong>Fecha estimada: {res.fecha.toLocaleDateString()}</strong> (en {res.dias} días)</p>
+          )}
+          {res.fecha && res.dias <= 0 && (
+            <p style={{ color: '#b00020' }}><strong>Service vencido hace {Math.abs(res.dias)} días.</strong> Coordiná un turno.</p>
+          )}
+          {!res.fecha && res.faltanKm > 0 && (
+            <p><strong>Faltan {res.faltanKm} km</strong> para el próximo service.</p>
+          )}
+          {!res.fecha && res.faltanKm <= 0 && (
+            <p style={{ color: '#b00020' }}><strong>Service vencido por kilometraje.</strong> Coordiná un turno.</p>
+          )}
+          <p style={{ fontSize: 12, color: '#666' }}>La fecha es una estimación según tu uso promedio.</p>
+          <button onClick={nuevaConsulta} style={{ width: '100%', padding: 10, marginTop: 8 }}>Nueva consulta</button>
+        </div>
+      )}
     </div>
   );
 }
