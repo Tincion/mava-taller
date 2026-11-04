@@ -512,6 +512,8 @@ function App() {
   const [estadisticas, setEstadisticas] = useState({ autos: 0, motos: 0, serviciosMes: 0 });
   const [vencidos, setVencidos] = useState([]);
   const [cargandoVencidos, setCargandoVencidos] = useState(false);
+  const [recordatorios, setRecordatorios] = useState({});
+  const [mostrarAvisados, setMostrarAvisados] = useState(false);
 
   const [cotizacion, setCotizacion] = useState({
     nombre_cliente: '', telefono: '', direccion: '', tipo_problema: 'Batería descargada', descripcion: '', precio_estimado: '',
@@ -626,8 +628,37 @@ function App() {
       .filter((c) => c && c.diasRestantes <= 15) // vencidos o a menos de 15 días
       .sort((a, b) => a.diasRestantes - b.diasRestantes);
 
+    const { data: marcas } = await supabase.from('recordatorios_service').select('*');
+    const mapa = {};
+    (marcas || []).forEach((m) => { mapa[m.servicio_id] = m; });
+    setRecordatorios(mapa);
+
     setVencidos(calculados);
     setCargandoVencidos(false);
+  };
+
+  const estaAvisado = (item) => {
+    const r = recordatorios[item.servicio.id];
+    return !!(r && (r.avisado || r.email_enviado));
+  };
+
+  const marcarRecordatorio = async (servicioId, campo, valor) => {
+    const anterior = recordatorios[servicioId] || {};
+    const nuevo = { ...anterior, servicio_id: servicioId, [campo]: valor };
+    setRecordatorios((prev) => ({ ...prev, [servicioId]: nuevo }));
+    const { error } = await supabase.from('recordatorios_service').upsert(
+      {
+        servicio_id: servicioId,
+        avisado: !!nuevo.avisado,
+        email_enviado: !!nuevo.email_enviado,
+        actualizado_at: new Date().toISOString(),
+      },
+      { onConflict: 'servicio_id' }
+    );
+    if (error) {
+      alert('No se pudo guardar la marca: ' + error.message);
+      setRecordatorios((prev) => ({ ...prev, [servicioId]: anterior }));
+    }
   };
 
   const recordarPorWhatsApp = (item) => {
@@ -1017,13 +1048,19 @@ function App() {
             </div>
 
             <h3 className="seccion-titulo" style={{ marginTop: 30 }}>🔔 Services Vencidos o Próximos a Vencer</h3>
+            {vencidos.some(estaAvisado) && (
+              <button onClick={() => setMostrarAvisados((v) => !v)} style={{ background: 'transparent', border: '1px solid currentColor', color: 'inherit', padding: '4px 10px', fontSize: 12, marginBottom: 6 }}>
+                {mostrarAvisados ? 'Ocultar los ya avisados' : `Mostrar ya avisados (${vencidos.filter(estaAvisado).length})`}
+              </button>
+            )}
             {cargandoVencidos ? (
               <p style={{ color: 'var(--text-muted)' }}>Calculando…</p>
-            ) : vencidos.length === 0 ? (
+            ) : vencidos.filter((item) => mostrarAvisados || !estaAvisado(item)).length === 0 ? (
               <p style={{ color: 'var(--text-muted)' }}>No hay vehículos con service vencido o próximo por ahora. 🎉</p>
             ) : (
-              vencidos.map((item) => {
+              vencidos.filter((item) => mostrarAvisados || !estaAvisado(item)).map((item) => {
                 const venc = item.diasRestantes <= 0;
+                const marca = recordatorios[item.servicio.id] || {};
                 return (
                   <div key={item.servicio.id} style={{
                     background: 'var(--bg-body)', padding: '14px', margin: '10px 0', borderRadius: 10,
@@ -1039,7 +1076,19 @@ function App() {
                         {venc ? `Vencido hace ${Math.abs(item.diasRestantes)} días` : `Vence en ${item.diasRestantes} días`}
                       </p>
                     </div>
-                    <button onClick={() => recordarPorWhatsApp(item)} style={{ background: '#25D366', color: 'white' }}>📤 Recordar por WhatsApp</button>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <button onClick={() => recordarPorWhatsApp(item)} style={{ background: '#25D366', color: 'white' }}>📤 Recordar por WhatsApp</button>
+                      <div style={{ display: 'flex', gap: 12, fontSize: 13, justifyContent: 'center' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
+                          <input type="checkbox" checked={!!marca.avisado} onChange={(e) => marcarRecordatorio(item.servicio.id, 'avisado', e.target.checked)} />
+                          Ya avisé
+                        </label>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
+                          <input type="checkbox" checked={!!marca.email_enviado} onChange={(e) => marcarRecordatorio(item.servicio.id, 'email_enviado', e.target.checked)} />
+                          Email enviado
+                        </label>
+                      </div>
+                    </div>
                   </div>
                 );
               })
@@ -1255,7 +1304,7 @@ function App() {
                         <h3 className="pdf-section-title">📷 Fotos del Vehículo</h3>
                         <div className="pdf-fotos-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 10, marginBottom: 20 }}>
                           {d.fotos.map((url) => (
-                            <img key={url} src={url} alt="foto del service" style={{ width: '100%', height: 120, objectFit: 'cover', borderRadius: 8, border: '1px solid #dbe3ec' }} />
+                            <img key={url} src={url} alt="foto del service" style={{ width: '100%', height: 'auto', objectFit: 'contain', borderRadius: 8, border: '1px solid #dbe3ec' }} />
                           ))}
                         </div>
                       </div>
@@ -1431,13 +1480,13 @@ function App() {
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 14 }}>
                 {(checklist.fotos || []).map((url) => (
                   <div key={url} style={{ position: 'relative' }}>
-                    <img src={url} alt="foto guardada" style={{ width: 84, height: 84, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border-color)' }} />
+                    <img src={url} alt="foto guardada" style={{ maxWidth: 220, width: 'auto', height: 'auto', display: 'block', borderRadius: 8, border: '1px solid var(--border-color)' }} />
                     <button onClick={() => quitarFotoGuardada(url)} style={{ position: 'absolute', top: -8, right: -8, width: 22, height: 22, borderRadius: '50%', background: 'var(--mal)', color: '#fff', padding: 0, fontSize: 12, lineHeight: '20px' }}>✕</button>
                   </div>
                 ))}
                 {fotosNuevas.map((archivo, i) => (
                   <div key={i} style={{ position: 'relative' }}>
-                    <img src={URL.createObjectURL(archivo)} alt="foto nueva" style={{ width: 84, height: 84, objectFit: 'cover', borderRadius: 8, border: '2px solid var(--amber)' }} />
+                    <img src={URL.createObjectURL(archivo)} alt="foto nueva" style={{ maxWidth: 220, width: 'auto', height: 'auto', display: 'block', borderRadius: 8, border: '2px solid var(--amber)' }} />
                     <button onClick={() => quitarFotoNueva(i)} style={{ position: 'absolute', top: -8, right: -8, width: 22, height: 22, borderRadius: '50%', background: 'var(--mal)', color: '#fff', padding: 0, fontSize: 12, lineHeight: '20px' }}>✕</button>
                   </div>
                 ))}
