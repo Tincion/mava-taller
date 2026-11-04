@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import QRCode from 'qrcode';
 import { supabase } from './supabase';
 import './App.css';
 
@@ -478,6 +479,89 @@ function FilaTrabajoAdicional({ trabajo, onCambiar, onQuitar }) {
   );
 }
 
+/* =========================================================
+   CONSULTA PÚBLICA — la ve el cliente desde el QR (?consulta=1).
+   No pide login. Solo muestra el próximo service después de
+   verificar patente + DNI en la función de Supabase.
+========================================================= */
+function ConsultaPublica() {
+  const [patente, setPatente] = useState('');
+  const [dni, setDni] = useState('');
+  const [buscando, setBuscando] = useState(false);
+  const [mensaje, setMensaje] = useState('');
+  const [resultado, setResultado] = useState(null);
+
+  const consultar = async (e) => {
+    e.preventDefault();
+    setBuscando(true); setMensaje(''); setResultado(null);
+    const { data, error } = await supabase.rpc('consulta_proximo_service', {
+      p_patente: patente, p_dni: dni,
+    });
+    setBuscando(false);
+    if (error) {
+      const msg = error.message || '';
+      if (msg.includes('BLOQUEADO')) return setMensaje('Por seguridad, los datos de este vehículo quedaron bloqueados. Comunicate con el taller para desbloquearlos.');
+      if (msg.includes('DNI_INCORRECTO')) return setMensaje('No encontramos un vehículo con esa patente y DNI. Revisá los datos.');
+      return setMensaje('No pudimos consultar en este momento. Probá de nuevo más tarde.');
+    }
+    if (!data || data.length === 0) return setMensaje('No encontramos un vehículo con esa patente y DNI. Revisá los datos.');
+
+    const r = data[0];
+    const kmActual = parseFloat(r.km_actual) || 0;
+    const kmProximo = parseFloat(r.km_proximo) || 0;
+    const promedio = parseFloat(r.promedio_km_mensual) || 0;
+    let diasRestantes = null;
+    let fechaEstimada = null;
+    if (promedio > 0 && kmProximo > kmActual) {
+      const meses = (kmProximo - kmActual) / promedio;
+      fechaEstimada = new Date(r.fecha_ultimo_service);
+      fechaEstimada.setDate(fechaEstimada.getDate() + Math.round(meses * 30));
+      diasRestantes = Math.ceil((fechaEstimada - new Date()) / (1000 * 60 * 60 * 24));
+    }
+    setResultado({ ...r, kmActual, kmProximo, diasRestantes, fechaEstimada });
+  };
+
+  const caja = { background: 'var(--bg-body)', padding: 20, borderRadius: 12, border: '1px solid var(--border-color)', maxWidth: 420, margin: '40px auto' };
+
+  return (
+    <div style={{ padding: 16 }}>
+      <div style={caja}>
+        <h2 style={{ marginTop: 0 }}>MAVA Taller · Próximo service</h2>
+        <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>Ingresá la patente y el DNI del titular para ver cuándo te toca tu próximo cambio de aceite.</p>
+        <form onSubmit={consultar}>
+          <label style={{ display: 'block', fontWeight: 'bold', marginBottom: 4 }}>Patente</label>
+          <input value={patente} onChange={(e) => setPatente(e.target.value)} required style={{ width: '100%', marginBottom: 12 }} />
+          <label style={{ display: 'block', fontWeight: 'bold', marginBottom: 4 }}>DNI del titular</label>
+          <input value={dni} onChange={(e) => setDni(e.target.value)} required inputMode="numeric" style={{ width: '100%', marginBottom: 14 }} />
+          <button type="submit" disabled={buscando} style={{ width: '100%', background: 'var(--primary)', color: '#fff' }}>
+            {buscando ? 'Consultando…' : 'Consultar'}
+          </button>
+        </form>
+
+        {mensaje && <p style={{ color: 'var(--mal)', marginTop: 14 }}>{mensaje}</p>}
+
+        {resultado && (
+          <div style={{ marginTop: 18, paddingTop: 14, borderTop: '1px solid var(--border-color)' }}>
+            <p style={{ margin: '0 0 6px 0' }}><strong>{resultado.marca} {resultado.modelo}</strong> ({resultado.patente})</p>
+            <p style={{ margin: '0 0 6px 0' }}>Kilometraje registrado: {resultado.kmActual} km</p>
+            <p style={{ margin: '0 0 10px 0' }}>Próximo service recomendado: {resultado.kmProximo} km</p>
+            {resultado.diasRestantes === null ? (
+              <p style={{ fontWeight: 'bold' }}>Consultá con el taller la fecha de tu próximo service.</p>
+            ) : resultado.diasRestantes <= 0 ? (
+              <p style={{ fontWeight: 'bold', color: 'var(--mal)' }}>Tu service está vencido hace {Math.abs(resultado.diasRestantes)} días. Coordiná un turno con el taller.</p>
+            ) : (
+              <p style={{ fontWeight: 'bold', color: 'var(--regular)' }}>
+                Te toca aprox. el {resultado.fechaEstimada.toLocaleDateString()} (en {resultado.diasRestantes} días).
+              </p>
+            )}
+            <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>La fecha es una estimación según tu uso promedio.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const [pantalla, setPantalla] = useState('buscador');
   const [temaClaro, setTemaClaro] = useState(false);
@@ -514,6 +598,9 @@ function App() {
   const [cargandoVencidos, setCargandoVencidos] = useState(false);
   const [recordatorios, setRecordatorios] = useState({});
   const [mostrarAvisados, setMostrarAvisados] = useState(false);
+  const [mostrarQR, setMostrarQR] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState('');
+  const [bloqueados, setBloqueados] = useState([]);
 
   const [cotizacion, setCotizacion] = useState({
     nombre_cliente: '', telefono: '', direccion: '', tipo_problema: 'Batería descargada', descripcion: '', precio_estimado: '',
@@ -633,6 +720,13 @@ function App() {
     (marcas || []).forEach((m) => { mapa[m.servicio_id] = m; });
     setRecordatorios(mapa);
 
+    const { data: bloq } = await supabase
+      .from('intentos_consulta')
+      .select('*, vehiculos(*, clientes(*))')
+      .eq('bloqueado', true)
+      .order('bloqueado_at', { ascending: false });
+    setBloqueados(bloq || []);
+
     setVencidos(calculados);
     setCargandoVencidos(false);
   };
@@ -659,6 +753,31 @@ function App() {
       alert('No se pudo guardar la marca: ' + error.message);
       setRecordatorios((prev) => ({ ...prev, [servicioId]: anterior }));
     }
+  };
+
+  const desbloquearConsulta = async (vehiculoId) => {
+    const { error } = await supabase
+      .from('intentos_consulta')
+      .update({ bloqueado: false, bloqueado_at: null, intentos_fallidos: 0, actualizado_at: new Date().toISOString() })
+      .eq('vehiculo_id', vehiculoId);
+    if (error) return alert('No se pudo desbloquear: ' + error.message);
+    setBloqueados((prev) => prev.filter((b) => b.vehiculo_id !== vehiculoId));
+  };
+
+  const contactarBloqueo = (b) => {
+    const tel = (b.vehiculos?.clientes?.telefono || '').replace(/\D/g, '');
+    if (!tel) return alert('Este cliente no tiene teléfono registrado.');
+    const nombre = b.vehiculos?.clientes?.nombre || '';
+    const patente = b.vehiculos?.patente || '';
+    const mensaje = `Hola ${nombre}, somos *MAVA Taller*. Vimos que intentaron consultar el próximo service de tu vehículo (${patente}) y los datos quedaron bloqueados por seguridad. ¿Fuiste vos quien intentó consultar? Si querés, te lo desbloqueamos y te decimos cuándo te toca el cambio de aceite.`;
+    window.open(`https://wa.me/${tel}?text=${encodeURIComponent(mensaje)}`, '_blank');
+  };
+
+  const abrirQR = async () => {
+    const url = `${window.location.origin}/?consulta=1`;
+    const dataUrl = await QRCode.toDataURL(url, { width: 500, margin: 2 });
+    setQrDataUrl(dataUrl);
+    setMostrarQR(true);
   };
 
   const recordarPorWhatsApp = (item) => {
@@ -1093,6 +1212,31 @@ function App() {
                 );
               })
             )}
+
+            {bloqueados.length > 0 && (
+              <>
+                <h3 className="seccion-titulo" style={{ marginTop: 30 }}>🔒 Consultas Bloqueadas</h3>
+                <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Estos vehículos superaron 3 intentos fallidos de verificación. Ningún dato se muestra hasta que lo desbloquees.</p>
+                {bloqueados.map((b) => (
+                  <div key={b.vehiculo_id} style={{
+                    background: 'var(--bg-body)', padding: '14px', margin: '10px 0', borderRadius: 10,
+                    border: '1px solid var(--border-color)', borderLeft: '4px solid var(--mal)',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10,
+                  }}>
+                    <div>
+                      <strong>{b.vehiculos?.marca} {b.vehiculos?.modelo}</strong> <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13 }}>({b.vehiculos?.patente})</span>
+                      <p style={{ margin: '4px 0 0 0', fontSize: 13, color: 'var(--text-muted)' }}>
+                        {b.vehiculos?.clientes?.nombre} · Bloqueado el {b.bloqueado_at ? new Date(b.bloqueado_at).toLocaleString() : '-'}
+                      </p>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <button onClick={() => contactarBloqueo(b)} style={{ background: '#25D366', color: 'white' }}>📤 Preguntar por WhatsApp</button>
+                      <button onClick={() => desbloquearConsulta(b.vehiculo_id)} style={{ background: 'var(--success)', color: 'white' }}>🔓 Desbloquear</button>
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
           </div>
         )}
 
@@ -1178,6 +1322,22 @@ function App() {
                   )}
                 </div>
 
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
+                  <button onClick={abrirQR} style={{ background: 'var(--primary)', color: '#fff' }}>📱 QR para el cliente</button>
+                </div>
+                {mostrarQR && (
+                  <div onClick={() => setMostrarQR(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
+                    <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--bg-body)', padding: 20, borderRadius: 12, textAlign: 'center', maxWidth: 360 }}>
+                      <h3 style={{ marginTop: 0 }}>Escaneá para ver el próximo service</h3>
+                      <img src={qrDataUrl} alt="QR de consulta" style={{ width: 260, height: 260 }} />
+                      <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>El cliente ingresa su patente y DNI. Ningún dato se muestra sin verificarlos.</p>
+                      <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+                        <a href={qrDataUrl} download={`QR-${vehiculoActivo.patente}.png`} style={{ background: 'var(--success)', color: '#fff', padding: '8px 14px', borderRadius: 8, textDecoration: 'none', fontWeight: 'bold' }}>⬇️ Descargar</a>
+                        <button onClick={() => setMostrarQR(false)} style={{ background: 'transparent' }}>Cerrar</button>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <h3 className="seccion-titulo">Historial de Servicios de {vehiculoActivo.patente}</h3>
                 {historial.length === 0 ? <p>No hay servicios previos registrados para este vehículo.</p> : (
                   historial.map((srv, idx) => {
@@ -1513,4 +1673,7 @@ function App() {
   );
 }
 
-export default App;
+export default function Root() {
+  const esConsulta = new URLSearchParams(window.location.search).has('consulta');
+  return esConsulta ? <ConsultaPublica /> : <App />;
+}
