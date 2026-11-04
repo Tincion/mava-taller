@@ -484,6 +484,10 @@ function FilaTrabajoAdicional({ trabajo, onCambiar, onQuitar }) {
    No pide login. Solo muestra el próximo service después de
    verificar patente + DNI en la función de Supabase.
 ========================================================= */
+// WhatsApp del taller para el botón de la consulta pública.
+// Formato: 549 + código de área + número, sin 0 ni 15. Ej: 5491112345678
+const WHATSAPP_TALLER = '5491122547742';
+
 function ConsultaPublica() {
   const [patente, setPatente] = useState('');
   const [dni, setDni] = useState('');
@@ -530,6 +534,11 @@ function ConsultaPublica() {
     setEstado('ok');
   };
 
+  const necesitaTurno = res && ((res.fecha && res.dias <= 15) || (!res.fecha && res.faltanKm <= 1000));
+  const linkWhatsApp = WHATSAPP_TALLER
+    ? `https://wa.me/${WHATSAPP_TALLER}?text=${encodeURIComponent(`Hola, soy el titular del ${res.marca} ${res.modelo} (${res.patente}). Quiero coordinar el cambio de aceite.`)}`
+    : null;
+
   const nuevaConsulta = () => { setEstado('inicio'); setRes(null); setMensaje(''); setPatente(''); setDni(''); };
 
   return (
@@ -569,6 +578,11 @@ function ConsultaPublica() {
             <p style={{ color: '#b00020' }}><strong>Service vencido por kilometraje.</strong> Coordiná un turno.</p>
           )}
           <p style={{ fontSize: 12, color: '#666' }}>La fecha es una estimación según tu uso promedio.</p>
+          {necesitaTurno && linkWhatsApp && (
+            <a href={linkWhatsApp} target="_blank" rel="noreferrer" style={{ display: 'block', textAlign: 'center', background: '#25D366', color: '#fff', padding: 12, borderRadius: 8, textDecoration: 'none', fontWeight: 'bold', marginTop: 12 }}>
+              📱 Coordinar turno por WhatsApp
+            </a>
+          )}
           <button onClick={nuevaConsulta} style={{ width: '100%', padding: 10, marginTop: 8 }}>Nueva consulta</button>
         </div>
       )}
