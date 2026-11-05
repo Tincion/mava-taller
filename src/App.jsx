@@ -649,6 +649,7 @@ function App() {
   const [cargandoVencidos, setCargandoVencidos] = useState(false);
   const [recordatorios, setRecordatorios] = useState({});
   const [mostrarAvisados, setMostrarAvisados] = useState(false);
+  const [ocultadosAhora, setOcultadosAhora] = useState({});
   const [mostrarQR, setMostrarQR] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState('');
   const [bloqueados, setBloqueados] = useState([]);
@@ -782,6 +783,9 @@ function App() {
     setCargandoVencidos(false);
   };
 
+  const visibleAlerta = (item) =>
+    !ocultadosAhora[item.servicio.id] && (mostrarAvisados || !estaAvisado(item));
+
   const estaAvisado = (item) => {
     const r = recordatorios[item.servicio.id];
     return !!(r && (r.avisado || r.email_enviado));
@@ -791,6 +795,7 @@ function App() {
     const anterior = recordatorios[servicioId] || {};
     const nuevo = { ...anterior, servicio_id: servicioId, [campo]: valor };
     setRecordatorios((prev) => ({ ...prev, [servicioId]: nuevo }));
+    setOcultadosAhora((prev) => ({ ...prev, [servicioId]: valor }));
     const { error } = await supabase.from('recordatorios_service').upsert(
       {
         servicio_id: servicioId,
@@ -803,6 +808,7 @@ function App() {
     if (error) {
       alert('No se pudo guardar la marca: ' + error.message);
       setRecordatorios((prev) => ({ ...prev, [servicioId]: anterior }));
+      setOcultadosAhora((prev) => ({ ...prev, [servicioId]: !valor }));
     }
   };
 
@@ -1219,16 +1225,16 @@ function App() {
 
             <h3 className="seccion-titulo" style={{ marginTop: 30 }}>🔔 Services Vencidos o Próximos a Vencer</h3>
             {vencidos.some(estaAvisado) && (
-              <button onClick={() => setMostrarAvisados((v) => !v)} style={{ background: 'transparent', border: '1px solid currentColor', color: 'inherit', padding: '4px 10px', fontSize: 12, marginBottom: 6 }}>
+              <button onClick={() => { setMostrarAvisados((v) => !v); setOcultadosAhora({}); }} style={{ background: 'transparent', border: '1px solid currentColor', color: 'inherit', padding: '4px 10px', fontSize: 12, marginBottom: 6 }}>
                 {mostrarAvisados ? 'Ocultar los ya avisados' : `Mostrar ya avisados (${vencidos.filter(estaAvisado).length})`}
               </button>
             )}
             {cargandoVencidos ? (
               <p style={{ color: 'var(--text-muted)' }}>Calculando…</p>
-            ) : vencidos.filter((item) => mostrarAvisados || !estaAvisado(item)).length === 0 ? (
+            ) : vencidos.filter(visibleAlerta).length === 0 ? (
               <p style={{ color: 'var(--text-muted)' }}>No hay vehículos con service vencido o próximo por ahora. 🎉</p>
             ) : (
-              vencidos.filter((item) => mostrarAvisados || !estaAvisado(item)).map((item) => {
+              vencidos.filter(visibleAlerta).map((item) => {
                 const venc = item.diasRestantes <= 0;
                 const marca = recordatorios[item.servicio.id] || {};
                 return (
