@@ -535,7 +535,7 @@ function ConsultaPublica() {
   };
 
   const necesitaTurno = res && ((res.fecha && res.dias <= 15) || (!res.fecha && res.faltanKm <= 1000));
-  const linkWhatsApp = WHATSAPP_TALLER
+  const linkWhatsApp = WHATSAPP_TALLER && res
     ? `https://wa.me/${WHATSAPP_TALLER}?text=${encodeURIComponent(`Hola, soy el titular del ${res.marca} ${res.modelo} (${res.patente}). Quiero coordinar el cambio de aceite.`)}`
     : null;
 
