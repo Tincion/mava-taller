@@ -541,51 +541,74 @@ function ConsultaPublica() {
 
   const nuevaConsulta = () => { setEstado('inicio'); setRes(null); setMensaje(''); setPatente(''); setDni(''); };
 
+  const colorEstado = !res ? '#2f855a'
+    : res.fecha ? (res.dias <= 0 ? '#c53030' : res.dias <= 15 ? '#b7791f' : '#2f855a')
+    : (res.faltanKm <= 0 ? '#c53030' : res.faltanKm <= 1000 ? '#b7791f' : '#2f855a');
+
+  let textoEstado = '';
+  if (res) {
+    if (res.fecha && res.dias > 0) textoEstado = `Te toca aprox. el ${res.fecha.toLocaleDateString()} (en ${res.dias} días)`;
+    else if (res.fecha) textoEstado = `Service vencido hace ${Math.abs(res.dias)} días. Coordiná un turno.`;
+    else if (res.faltanKm > 0) textoEstado = `Faltan ${res.faltanKm} km para el próximo service.`;
+    else textoEstado = 'Service vencido por kilometraje. Coordiná un turno.';
+  }
+
+  const pagina = { minHeight: '100vh', background: '#eef2f7', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '24px 14px', boxSizing: 'border-box', fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif', color: '#1a2433' };
+  const tarjeta = { width: '100%', maxWidth: 400, background: '#fff', borderRadius: 16, boxShadow: '0 4px 18px rgba(11,27,43,0.12)', overflow: 'hidden' };
+  const cabecera = { background: '#0b1b2b', color: '#fff', padding: '18px 20px' };
+  const campo = { width: '100%', height: 46, border: '1px solid #cfd7e3', borderRadius: 10, padding: '0 12px', fontSize: 16, boxSizing: 'border-box', marginBottom: 14 };
+  const etiqueta = { display: 'block', fontSize: 13, fontWeight: 600, color: '#4a5568', marginBottom: 6 };
+  const boton = { width: '100%', height: 48, border: 'none', borderRadius: 10, background: '#0b1b2b', color: '#fff', fontSize: 16, fontWeight: 600, cursor: 'pointer' };
+  const fila = { display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #eef1f5', fontSize: 15 };
+
   return (
-    <div style={{ maxWidth: 420, margin: '30px auto', padding: 16, fontFamily: 'sans-serif' }}>
-      <h2 style={{ marginBottom: 4 }}>MAVA Taller</h2>
-      <p style={{ marginTop: 0, color: '#666' }}>Próximo service</p>
-
-      {estado !== 'ok' && (
-        <form onSubmit={consultar}>
-          <label style={{ display: 'block', marginBottom: 4 }}>Patente</label>
-          <input value={patente} onChange={(e) => setPatente(e.target.value)} required style={{ width: '100%', padding: 8, marginBottom: 10 }} />
-          <label style={{ display: 'block', marginBottom: 4 }}>DNI del titular</label>
-          <input value={dni} onChange={(e) => setDni(e.target.value)} required inputMode="numeric" style={{ width: '100%', padding: 8, marginBottom: 12 }} />
-          <button type="submit" disabled={estado === 'cargando'} style={{ width: '100%', padding: 10 }}>
-            {estado === 'cargando' ? 'Consultando…' : 'Consultar'}
-          </button>
-        </form>
-      )}
-
-      {estado === 'error' && <p style={{ color: '#b00020', marginTop: 14 }}>{mensaje}</p>}
-
-      {estado === 'ok' && res && (
-        <div style={{ borderTop: '1px solid #ccc', paddingTop: 12 }}>
-          <p><strong>{res.marca} {res.modelo}</strong> ({res.patente})</p>
-          <p>Kilometraje actual: <strong>{res.km_actual || '-'} km</strong></p>
-          <p>Próximo service: <strong>a los {res.km_proximo || '-'} km</strong></p>
-          {res.fecha && res.dias > 0 && (
-            <p><strong>Fecha estimada: {res.fecha.toLocaleDateString()}</strong> (en {res.dias} días)</p>
-          )}
-          {res.fecha && res.dias <= 0 && (
-            <p style={{ color: '#b00020' }}><strong>Service vencido hace {Math.abs(res.dias)} días.</strong> Coordiná un turno.</p>
-          )}
-          {!res.fecha && res.faltanKm > 0 && (
-            <p><strong>Faltan {res.faltanKm} km</strong> para el próximo service.</p>
-          )}
-          {!res.fecha && res.faltanKm <= 0 && (
-            <p style={{ color: '#b00020' }}><strong>Service vencido por kilometraje.</strong> Coordiná un turno.</p>
-          )}
-          <p style={{ fontSize: 12, color: '#666' }}>La fecha es una estimación según tu uso promedio.</p>
-          {necesitaTurno && linkWhatsApp && (
-            <a href={linkWhatsApp} target="_blank" rel="noreferrer" style={{ display: 'block', textAlign: 'center', background: '#25D366', color: '#fff', padding: 12, borderRadius: 8, textDecoration: 'none', fontWeight: 'bold', marginTop: 12 }}>
-              📱 Coordinar turno por WhatsApp
-            </a>
-          )}
-          <button onClick={nuevaConsulta} style={{ width: '100%', padding: 10, marginTop: 8 }}>Nueva consulta</button>
+    <div style={pagina}>
+      <div style={tarjeta}>
+        <div style={cabecera}>
+          <div style={{ fontSize: 20, fontWeight: 700 }}>MAVA Taller</div>
+          <div style={{ fontSize: 13, opacity: 0.8, marginTop: 2 }}>Próximo cambio de aceite</div>
         </div>
-      )}
+
+        <div style={{ padding: 20 }}>
+          {estado !== 'ok' && (
+            <form onSubmit={consultar}>
+              <label style={etiqueta}>Patente</label>
+              <input value={patente} onChange={(e) => setPatente(e.target.value)} required style={{ ...campo, textTransform: 'uppercase' }} />
+              <label style={etiqueta}>DNI del titular</label>
+              <input value={dni} onChange={(e) => setDni(e.target.value)} required inputMode="numeric" style={campo} />
+              <button type="submit" disabled={estado === 'cargando'} style={{ ...boton, opacity: estado === 'cargando' ? 0.6 : 1 }}>
+                {estado === 'cargando' ? 'Consultando…' : 'Consultar'}
+              </button>
+            </form>
+          )}
+
+          {estado === 'error' && (
+            <div style={{ marginTop: 16, padding: 14, borderRadius: 10, background: '#fdecec', color: '#9b2c2c', fontSize: 15 }}>{mensaje}</div>
+          )}
+
+          {estado === 'ok' && res && (
+            <>
+              <div style={{ fontSize: 17, fontWeight: 700 }}>{res.marca} {res.modelo}</div>
+              <div style={{ fontSize: 14, color: '#4a5568', marginBottom: 12 }}>Patente {res.patente}</div>
+              <div style={fila}><span>Kilometraje actual</span><strong>{res.km_actual || '-'} km</strong></div>
+              <div style={{ ...fila, borderBottom: 'none' }}><span>Próximo service</span><strong>a los {res.km_proximo || '-'} km</strong></div>
+
+              <div style={{ marginTop: 16, padding: 14, borderRadius: 10, background: colorEstado + '1A', color: colorEstado, fontWeight: 600, fontSize: 15 }}>
+                {textoEstado}
+              </div>
+              <div style={{ fontSize: 12, color: '#718096', marginTop: 8 }}>La fecha es una estimación según tu uso promedio.</div>
+
+              {necesitaTurno && linkWhatsApp && (
+                <a href={linkWhatsApp} target="_blank" rel="noreferrer" style={{ display: 'block', textAlign: 'center', background: '#25D366', color: '#fff', padding: 14, borderRadius: 10, textDecoration: 'none', fontWeight: 600, marginTop: 16 }}>
+                  📱 Coordinar turno por WhatsApp
+                </a>
+              )}
+
+              <button onClick={nuevaConsulta} style={{ ...boton, background: '#fff', color: '#0b1b2b', border: '1px solid #cfd7e3', marginTop: 12 }}>Nueva consulta</button>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
